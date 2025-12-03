@@ -1,0 +1,16 @@
+meta {
+  name: /delete_ordinateur
+  type: http
+  seq: 5
+}
+
+delete {
+  url: http://127.0.0.1:8000/delete_ordinateur/192.168.1.3
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,29 @@
+services:
+  # db:
+  #   image: mariadb:lts-ubi9
+  #   environment:
+  #     - MARIADB_ROOT_PASSWORD=bonjour
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - ./db/:/docker-entrypoint-initdb.d/
+  #   networks:
+  #     - networkapp
+
+  app:
+    build:
+      context: .
+      dockerfile: app.Dockerfile
+
+    volumes:
+      - ./code:/app
+    networks:
+      - networkapp
+    ports:
+      - 8000:8000
+    # depends_on:
+    #   - db
+
+
+networks:
+  networkapp:

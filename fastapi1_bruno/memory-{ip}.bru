@@ -1,0 +1,16 @@
+meta {
+  name: /memory/{ip}
+  type: http
+  seq: 6
+}
+
+get {
+  url: http://127.0.0.1:8000/memory/192.168.1.2
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

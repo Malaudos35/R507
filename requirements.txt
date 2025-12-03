@@ -1,0 +1,6 @@
+fastapi
+pydantic
+paramiko
+sqlmodel
+uvicorn
+pymysql
