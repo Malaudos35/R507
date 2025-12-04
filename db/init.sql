@@ -1,6 +1,5 @@
-CREATE DATABASE IF NOT EXISTS ordinateurs;
+CREATE DATABASE IF NOT EXISTS ordinateurs CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE ordinateurs;
-
-GRANT ALL PRIVILEGES ON ordinateurs.* TO 'root'@'%' IDENTIFIED BY 'bonjour';
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY 'bonjour';
+GRANT ALL PRIVILEGES ON ordinateurs.* TO 'root'@'%';
 FLUSH PRIVILEGES;
-

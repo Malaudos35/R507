@@ -1,0 +1,23 @@
+repo: https://github.com/Malaudos35/R507
+
+pydantic
+sqlmodel
+
+Docker
+poetry (requirements)
+Alambic
+SWT
+
+class:
+ComputerStatus
+SSHConnection
+Ordinateur
+
+
+tests bruno
+
+tables:
+Ordi
+
+
+
