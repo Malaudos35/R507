@@ -1,24 +1,29 @@
-[project]
-name = "code"
-version = "0.1.0"
-description = ""
-authors = [
-    {name = "Malo",email = "126970037+Malaudos35@users.noreply.github.com"}
-]
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "flask (>=3.1.2,<4.0.0)",
-    "fastapi (>=0.123.5,<0.124.0)",
-    "pydantic (>=2.12.5,<3.0.0)",
-    "paramiko (>=4.0.0,<5.0.0)",
-    "sqlmodel (>=0.0.27,<0.0.28)",
-    "uvicorn (>=0.38.0,<0.39.0)",
-    "pymysql (>=1.1.2,<2.0.0)"
-]
-
-
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-package-mode = false
+
+[tool.poetry]
+name = "r507"
+version = "0.1.0"
+description = "Gestion d'ordinateurs - API FastAPI"
+authors = ["Malo <126970037+Malaudos35@users.noreply.github.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.123.5"
+uvicorn = { extras = ["standard"], version = "^0.38.0" }
+pydantic = "^2.12.5"
+sqlmodel = "^0.0.27"
+sqlalchemy = "^2.0.44"
+alembic = "^1.11.1"
+paramiko = "^4.0.0"
+flask = "^3.1.2"
+pymysql = "^1.1.2"
+httpx = "^0.26.0"
+pytest = "^7.4.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+
+[tool.poetry.scripts]
+start = "uvicorn code.main:app --host 0.0.0.0 --port 8000"

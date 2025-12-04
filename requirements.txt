@@ -1,6 +1,9 @@
 fastapi
-pydantic
-paramiko
+uvicorn[standard]
 sqlmodel
-uvicorn
-pymysql
+sqlalchemy
+alembic
+paramiko
+pydantic
+pytest
+httpx

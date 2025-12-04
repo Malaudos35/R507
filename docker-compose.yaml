@@ -1,29 +1,39 @@
 services:
-  # db:
-  #   image: mariadb:lts-ubi9
-  #   environment:
-  #     - MARIADB_ROOT_PASSWORD=bonjour
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - ./db/:/docker-entrypoint-initdb.d/
-  #   networks:
-  #     - networkapp
-
   app:
     build:
       context: .
-      dockerfile: app.Dockerfile
-
-    volumes:
-      - ./code:/app
-    networks:
-      - networkapp
+      dockerfile: app3.Dockerfile
     ports:
-      - 8000:8000
-    # depends_on:
-    #   - db
+      - "8000:8000"
+    networks:
+      - frontend
+    volumes:
+      - ./:/app
+    environment:
+      - DATABASE_URL=sqlite:///./supervision.db
 
+  router:
+    image: aguacero7/frr-router:latest
+    container_name: router
+    hostname: test-router-1
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - NET_RAW
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv6.conf.all.forwarding=0
+    networks:
+      frontend:
+        # ipv4_address: 1.2.3.4
+    # volumes:
+      # - vtysh.conf:/etc/frr/vtysh.conf # doit être vide
+  ####### Pas obligatoire, utile si vous voulez personnaliser la conf frr en live avec un fichier frr.conf
+
+      # - frr.conf:/etc/frr/frr.conf
 
 networks:
-  networkapp:
+  frontend:
+    # Specify driver options
+    driver: bridge
