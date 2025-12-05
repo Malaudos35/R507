@@ -5,7 +5,8 @@ from sqlmodel import SQLModel, create_engine, Session, select
 from .models import Ordinateur
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./supervision.db")
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+# connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+connect_args = {}
 
 engine = create_engine(DATABASE_URL, echo=False, connect_args=connect_args)
 

@@ -2,12 +2,15 @@
 
 from typing import List
 from fastapi import FastAPI, HTTPException #, Depends
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 
 from contextlib import asynccontextmanager
 
 from .models import Ordinateur, OrdinateurBase #, SSHConnection, ComputerStatus
 from .db import engine, create_db_and_tables #, get_session
+# from .database import init_db
+
+# session = init_db()
 
 # app = FastAPI()
 # cache (compatibilité avec les tests existants)
@@ -41,10 +44,27 @@ app.state.ordinateurs = []
 def read_root():
     return {"message": "Bienvenue sur l'API FastAPI"}
 
+@app.get("/clean")
+def clean():
+    try:
+        with Session(engine) as session:
+            session.exec(delete(Ordinateur))
+            session.commit()
+        return {"message": "Base nettoyée"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/ordinateurs", response_model=List[Ordinateur])
 def get_ordinateurs():
-    return app.state.ordinateurs
-
+    with Session(engine) as session:
+        existing = session.exec(
+            select(Ordinateur)
+        ).all()
+        
+        if existing:
+            return existing
+        
+    
 @app.post("/add_ordinateur")
 def add_ordinateur(new: OrdinateurBase):
     with Session(engine) as session:

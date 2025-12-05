@@ -7,7 +7,7 @@ RUN pip install "poetry>=1.5"
 RUN poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi --no-root
 
-COPY . /app
+# COPY . /app
 
 EXPOSE 8000
 

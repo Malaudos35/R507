@@ -103,11 +103,26 @@ class OrdinateurBase(BaseModel):
 
 class Ordinateur(SQLModel, OrdinateurBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    mac: str = Field(sa_column=Column("mac", String, unique=True, index=True))
-    ip: str = Field(sa_column=Column("ip", String, unique=True, index=True))
-    hostname: str = Field(default="", sa_column=Column("hostname", String))
+
+    mac: str = Field(
+        sa_column=Column(String(17), unique=True, index=True)  # AA:BB:CC:DD:EE:FF
+    )
+
+    ip: str = Field(
+        sa_column=Column(String(15), unique=True, index=True)  # 255.255.255.255
+    )
+
+    hostname: str = Field(
+        default="",
+        sa_column=Column(String(255))
+    )
+
     taille_disque: int
-    os: str = Field(sa_column=Column("os", String))
+
+    os: str = Field(
+        sa_column=Column(String(100))
+    )
+
     status: ComputerStatus = Field(default=ComputerStatus.OFF)
     ram: float = Field(default=0.0)
     joignable: bool = Field(default=False)
