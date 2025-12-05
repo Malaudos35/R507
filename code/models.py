@@ -4,7 +4,7 @@ import re
 import socket
 import os
 from typing import Optional, Tuple, Dict, ClassVar
-from sqlmodel import SQLModel, Field, Column, String #, Integer, Float
+from sqlmodel import SQLModel, Field, Column, String, JSON #, Integer, Float
 from pydantic import BaseModel, field_validator, model_validator
 
 import paramiko
@@ -14,28 +14,31 @@ class ComputerStatus(str, Enum):
     OFF = "OFF"
     RELOADING = "RELOADING"
 
+from pydantic import BaseModel
+from typing import Optional, Tuple
+import paramiko
+
 class SSHConnection(BaseModel):
-    hostname: Optional[str] = ""
+    hostname: str
     username: Optional[str] = ""
     password: Optional[str] = ""
     key_filename: Optional[str] = ""
     port: int = 22
 
     def execute_command(self, command: str) -> Tuple[str, str, int]:
-        """
-        Execute a command via paramiko. Returns (stdout, stderr, exit_code).
-        If paramiko not configured or error, returns ("", error_message, -1).
-        """
         if not self.hostname:
             return "", "No hostname configured", -1
         try:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(self.hostname, port=self.port,
-                           username=self.username or None,
-                           password=self.password or None,
-                           key_filename=self.key_filename or None,
-                           timeout=5)  # small timeout for tests
+            client.connect(
+                self.hostname,
+                port=self.port,
+                username=self.username or None,
+                password=self.password or None,
+                key_filename=self.key_filename or None,
+                timeout=5
+            )
             _, stdout, stderr = client.exec_command(command)
             exit_code = stdout.channel.recv_exit_status()
             out = stdout.read().decode(errors="ignore")
@@ -54,7 +57,23 @@ class OrdinateurBase(BaseModel):
     status: ComputerStatus
     ram: float = 0.0
     joignable: bool = False
-    ssh_conn: ClassVar[Optional[SSHConnection]] = None
+    ssh_conn_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    
+    @property
+    def ssh_conn(self) -> Optional[SSHConnection]:
+        if self.ssh_conn_json:
+            return SSHConnection(**self.ssh_conn_json)
+        return None
+
+    @ssh_conn.setter
+    def ssh_conn(self, value: Optional[SSHConnection]):
+        if value:
+            self.ssh_conn_json = value.model_dump()
+        else:
+            self.ssh_conn_json = None
+
+
+
 
     @field_validator("mac")
     def validate_mac(cls, v: str) -> str:
@@ -75,23 +94,32 @@ class OrdinateurBase(BaseModel):
 
     @model_validator(mode="after")
     def autoset_fields(self):
+        # si ssh_conn_json est un dict, le convertir en SSHConnection
+        if isinstance(self.ssh_conn_json, dict):
+            self.ssh_conn = SSHConnection(**self.ssh_conn_json)
+
         # hostname auto-resolution
         if not self.hostname:
             try:
                 self.hostname = socket.gethostbyaddr(self.ip)[0]
             except Exception:
                 self.hostname = ""
-        if self.ssh_conn and not self.ssh_conn.hostname:
-            self.ssh_conn.hostname = self.ip
+
+        # si ssh_conn existe et n'a pas de hostname, on met l'IP
+        if self.ssh_conn and isinstance(self.ssh_conn, SSHConnection):
+            if not self.ssh_conn.hostname:
+                self.ssh_conn.hostname = self.ip
+
         # try to fetch RAM via SSH if available
-        if self.ram == 0.0 and self.ssh_conn:
+        if self.ram == 0.0 and isinstance(self.ssh_conn, SSHConnection):
             try:
                 stdout, _, exit_code = self.ssh_conn.execute_command("free -m")
                 if exit_code == 0:
                     self.ram = float(stdout.strip().split("\n")[1].split()[1]) / 1024
             except Exception:
                 self.ram = 0.0
-        # ping check (non-blocking-ish)
+
+        # ping check
         if self.joignable is False:
             try:
                 ping_target = self.hostname or self.ip
@@ -99,6 +127,7 @@ class OrdinateurBase(BaseModel):
                 self.joignable = (response == 0)
             except Exception:
                 self.joignable = False
+
         return self
 
 class Ordinateur(SQLModel, OrdinateurBase, table=True):
@@ -126,6 +155,8 @@ class Ordinateur(SQLModel, OrdinateurBase, table=True):
     status: ComputerStatus = Field(default=ComputerStatus.OFF)
     ram: float = Field(default=0.0)
     joignable: bool = Field(default=False)
+    # ssh_conn: Optional[SSHConnection] = Field(default=None, sa_column=None)
+
     # We store SSH connection as JSON via pydantic; not persisted by SQLModel as a column here.
     # For simple persistence, we won't persist ssh_conn into DB in this minimal example.
 

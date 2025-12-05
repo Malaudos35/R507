@@ -6,7 +6,7 @@ from sqlmodel import Session, select, delete
 
 from contextlib import asynccontextmanager
 
-from .models import Ordinateur, OrdinateurBase #, SSHConnection, ComputerStatus
+from .models import Ordinateur, OrdinateurBase, SSHConnection, ComputerStatus
 from .db import engine, create_db_and_tables #, get_session
 # from .database import init_db
 
@@ -63,39 +63,23 @@ def get_ordinateurs():
         
         if existing:
             return existing
-        
-    
+
+
 @app.post("/add_ordinateur")
-def add_ordinateur(new: OrdinateurBase):
+def add_ordinateur(payload: dict):
+    # Convert SSH dict en JSON compatible SQLModel
+    ssh_data = payload.pop("ssh_conn", None)
+    if ssh_data:
+        payload["ssh_conn_json"] = ssh_data
+
+    ordinateur = Ordinateur(**payload)
+
     with Session(engine) as session:
-        existing = session.exec(
-            select(Ordinateur).where(
-                (Ordinateur.ip == new.ip) | (Ordinateur.mac == new.mac)
-            )
-        ).first()
-
-        if existing:
-            raise HTTPException(
-                status_code=400,
-                detail="Ordinateur already exists"
-            )
-
-        ordinateur = Ordinateur(
-            mac=new.mac,
-            ip=new.ip,
-            hostname="",
-            taille_disque=new.taille_disque,
-            os=new.os,
-            status=new.status,
-            ram=new.ram,
-            joignable=True,
-        )
-
         session.add(ordinateur)
         session.commit()
         session.refresh(ordinateur)
-
-        return ordinateur
+    
+    return {"success": True, "id": ordinateur.id}
 
 @app.put("/edit_ordinateur")
 def put_ordinateur(ordinateur: Ordinateur):
@@ -149,24 +133,50 @@ def delete_ordinateur(ip: str):
     app.state.ordinateurs[:] = [o for o in app.state.ordinateurs if o.ip != ip]
     return {"message": "Ordinateur deleted successfully"}
 
-@app.get("/memory/{ip}")
-def free_memory(ip: str):
+@app.post("/ssh/{ip}")
+def setup_ssh(ip: str, ssh: SSHConnection):
     for ordinateur in app.state.ordinateurs:
         if ordinateur.ip == ip:
-            return {"free_memory": ordinateur.get_free_memory(),
-                    "total_memory": ordinateur.get_max_memory()}
+            ordinateur.ssh_conn = ssh
+            return {"message": "SSH configuré avec succès"}
+
+    raise HTTPException(status_code=404, detail="Ordinateur not found")
+
+@app.get("/memory/{ip}")
+def free_memory(ip: str):
+    with Session(engine) as session:
+        stmt = select(Ordinateur).where(Ordinateur.ip == ip)
+        ordinateur = session.exec(stmt).first()
+        if ordinateur:
+            
+            # forcer le rebuild de SSHConnection
+            ssh_conn = ordinateur.ssh_conn
+            if not ssh_conn:
+                raise HTTPException(status_code=400, detail="SSH not configured")
+            return {
+                "free_memory": ordinateur.get_free_memory(),
+                "total_memory": ordinateur.get_max_memory()
+            }
     raise HTTPException(status_code=404, detail="Ordinateur not found")
 
 @app.get("/cpu_load/{ip}")
 def cpu_load(ip: str):
-    for ordinateur in app.state.ordinateurs:
-        if ordinateur.ip == ip:
+    with Session(engine) as session:
+        stmt = select(Ordinateur).where(Ordinateur.ip == ip)
+        ordinateur = session.exec(stmt).first()
+        if ordinateur:
+            if not ordinateur.ssh_conn:
+                raise HTTPException(status_code=400, detail="SSH not configured")
             return {"cpu_load": ordinateur.get_cpu_load()}
     raise HTTPException(status_code=404, detail="Ordinateur not found")
 
 @app.get("/os_release/{ip}")
 def os_release(ip: str):
-    for ordinateur in app.state.ordinateurs:
-        if ordinateur.ip == ip:
+    with Session(engine) as session:
+        stmt = select(Ordinateur).where(Ordinateur.ip == ip)
+        ordinateur = session.exec(stmt).first()
+        if ordinateur:
+            if not ordinateur.ssh_conn:
+                raise HTTPException(status_code=400, detail="SSH not configured")
             return ordinateur.get_os_release()
     raise HTTPException(status_code=404, detail="Ordinateur not found")

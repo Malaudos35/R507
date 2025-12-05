@@ -2,11 +2,8 @@ services:
   db:
     container_name: db
     image: mysql:9.5
-    # build:
-    #   context: db
-    #   dockerfile: db.Dockerfile
     ports:
-      - "3306:3306"  # Port MySQL
+      - "3306:3306"
     environment:
       - TZ=${TZ}
       - MYSQL_USER=${MYSQL_USER}
@@ -15,16 +12,17 @@ services:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
     volumes:
       - ./db/sql:/docker-entrypoint-initdb.d
-      # - postgres_data:/var/lib/postgresql/data  # Volume persistant pour la base de données
       - ./db/my.conf:/etc/mysql/conf.d/my.conf
     networks:
-      - frontend
+      frontend:
+        ipv4_address: 192.168.1.212
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
       interval: 5s
       timeout: 5s
       retries: 10
+
   app:
     build:
       context: .
@@ -32,55 +30,55 @@ services:
     ports:
       - "8000:8000"
     networks:
-      - frontend
+      frontend:
+        ipv4_address: 192.168.1.211
     volumes:
       - ./:/app
     environment:
-      # - DATABASE_URL=sqlite:///./supervision.db
       - DATABASE_URL=${DATABASE_URL}
     depends_on:
       - db
+      - linux
+      - router
     restart: always
 
-  # router:
-  #   image: aguacero7/frr-router:latest
-  #   container_name: router
-  #   hostname: test-router-1
-  #   privileged: true
-  #   cap_add:
-  #     - NET_ADMIN
-  #     - SYS_ADMIN
-  #     - NET_RAW
-  #   sysctls:
-  #     - net.ipv4.ip_forward=1
-  #     - net.ipv6.conf.all.forwarding=0
-  #   ports:
-  #     - "3022:22"
-  #     # - "22:3022" # routerpass123 
-  #   networks:
-  #     frontend:
-  #       # ipv4_address: 1.2.3.4
-  #   # volumes:
-  #     # - vtysh.conf:/etc/frr/vtysh.conf # doit être vide
-  # ####### Pas obligatoire, utile si vous voulez personnaliser la conf frr en live avec un fichier frr.conf
+  router:
+    image: aguacero7/frr-router:latest
+    container_name: router
+    hostname: test-router-1
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - NET_RAW
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv6.conf.all.forwarding=0
+    ports:
+      - "3022:22"   # expose SSH for host access if needed
+    networks:
+      frontend:
+        ipv4_address: 192.168.1.252
+    # si vous voulez monter une config FRR personnalisée
+    # volumes:
+    #   - frr.conf:/etc/frr/frr.conf
 
-  #     # - frr.conf:/etc/frr/frr.conf
-
-  # linux:
-  #   image: alpine
-  #   ports:
-  #     - "2022:22"
-  #     # - "22:2022"
-  #   networks:
-  #     frontend:
-  #   command: ["sleep", "3600"]
-
-
+  linux:
+    # image: alpine
+    build:
+      context: .
+      dockerfile: alpine.Dockerfile
+    container_name: linux
+    networks:
+      frontend:
+        ipv4_address: 192.168.1.253
+    ports:
+      - "2022:22"  # expose SSH for host access if needed
+    command: ["sh", "-c", "apk add --no-cache openssh && /usr/sbin/sshd -D"]  # lancer sshd dans alpine
 
 networks:
   frontend:
-    # Specify driver options
     driver: bridge
-
-volumes:
-  postgres_data:
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24

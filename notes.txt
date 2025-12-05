@@ -19,5 +19,9 @@ tests bruno
 tables:
 Ordi
 
+frr
+root:routerpass123 
+alpine
+user:bonjour
 
 
